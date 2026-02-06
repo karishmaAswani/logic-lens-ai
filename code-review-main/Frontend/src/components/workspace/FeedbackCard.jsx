@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { Copy, Check, FileDiff, Eye } from 'lucide-react';
-import ReactDiffViewer from 'react-diff-viewer-continued';
+import { Copy, Check } from 'lucide-react';
 
 const FeedbackCard = ({ review, originalCode }) => {
     const [copied, setCopied] = useState(false);

@@ -13,6 +13,7 @@ const Workspace = () => {
     const [loading, setLoading] = useState(false);
     const [healthScore, setHealthScore] = useState(0);
 
+
     // Sidebar persistence 
     const [history, setHistory] = useState(() => {
         try {

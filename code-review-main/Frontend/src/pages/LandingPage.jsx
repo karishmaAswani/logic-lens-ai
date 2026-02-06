@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import TerminalDemo from '../components/landing/TerminalDemo';
 import DeveloperCard from '../components/landing/DeveloperCard';
-import TechStack from '../components/landing/TechStack';
 
 const LandingPage = () => {
     const [titleWord, setTitleWord] = useState('Refined.');
@@ -57,14 +56,10 @@ const LandingPage = () => {
                 </div>
             </div>
 
-            <TechStack />
-
-            {/* Footer Area with Aligned Developer Card */}
-            <div className="absolute bottom-8 left-0 right-0 pointer-events-none">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                    <div className="absolute bottom-0 right-4 sm:right-6 lg:right-8 pointer-events-auto">
-                        <DeveloperCard />
-                    </div>
+            {/* Footer Area with Centered Developer Card */}
+            <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none">
+                <div className="pointer-events-auto">
+                    <DeveloperCard />
                 </div>
             </div>
         </div>

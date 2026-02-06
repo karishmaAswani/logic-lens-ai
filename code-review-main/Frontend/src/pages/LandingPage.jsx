@@ -56,11 +56,8 @@ const LandingPage = () => {
                 </div>
             </div>
 
-            {/* Footer Area with Centered Developer Card */}
-            <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none">
-                <div className="pointer-events-auto">
-                    <DeveloperCard />
-                </div>
+            <div className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 animate-fade-in delay-500 z-10">
+                <DeveloperCard />
             </div>
         </div>
     );

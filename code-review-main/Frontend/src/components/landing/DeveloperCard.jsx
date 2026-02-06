@@ -3,7 +3,7 @@ import { Github, Linkedin } from 'lucide-react';
 
 const DeveloperCard = () => {
     return (
-        <div className="hidden xl:block animate-fade-in-up">
+        <div className="animate-fade-in-up">
             <div className="group relative bg-dark-800/80 backdrop-blur-md p-4 rounded-xl border border-white/10 hover:border-primary-500/50 transition-all shadow-lg hover:shadow-primary-500/20 max-w-xs">
                 <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 p-[2px]">
@@ -20,7 +20,9 @@ const DeveloperCard = () => {
                             <a href="https://github.com/karishmaAswani" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
                                 <Github size={16} />
                             </a>
-                            {/* Add LinkedIn if available, placeholder for now */}
+                            <a href="https://www.linkedin.com/in/karishmaaswani/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                                <Linkedin size={16} />
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -30,3 +32,4 @@ const DeveloperCard = () => {
 };
 
 export default DeveloperCard;
+

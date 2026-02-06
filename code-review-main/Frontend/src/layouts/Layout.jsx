@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Code2, Github, Moon, Sun } from 'lucide-react';
+import { Code2, Github, Linkedin, Moon, Sun } from 'lucide-react';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -27,6 +27,9 @@ const Layout = ({ children }) => {
                             <a href="https://github.com/karishmaAswani/AI-code-reviewer" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
                                 <Github className="w-5 h-5" />
                             </a>
+                            <a href="https://www.linkedin.com/in/karishmaaswani/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                                <Linkedin className="w-5 h-5" />
+                            </a>
                             {!isWorkspace && (
                                 <Link to="/workspace">
                                     <button className="px-5 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
@@ -48,3 +51,4 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+

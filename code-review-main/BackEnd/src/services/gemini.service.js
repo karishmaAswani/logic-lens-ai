@@ -69,41 +69,54 @@ const model = genAI.getGenerativeModel({
     `
 });
 
-async function generateReview(code) {
-    try {
-        const result = await model.generateContent(code);
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-        if (!result.response.candidates || result.response.candidates.length === 0) {
-            throw new Error("No response generated. It might have been blocked by safety settings.");
-        }
-
-        const responseText = await result.response.text();
-
-        // Split the response to separate the JSON header from the review text
-        const lines = responseText.trim().split('\n');
-        let structuredData = { score: 70, status: 'Needs Improvement' }; // Defaults
-        let cleanReviewText = responseText;
-
+async function generateReview(code, retries = 3, backoff = 2000) {
+    for (let i = 0; i < retries; i++) {
         try {
-            // Check if the first line is valid JSON
-            const firstLine = lines[0].trim();
-            if (firstLine.startsWith('{') && firstLine.endsWith('}')) {
-                structuredData = JSON.parse(firstLine);
-                cleanReviewText = lines.slice(1).join('\n').trim();
-            }
-        } catch (e) {
-            console.warn('Failed to parse structured review data, using defaults:', e);
-        }
+            const result = await model.generateContent(code);
 
-        return {
-            review: cleanReviewText,
-            score: structuredData.score || 70,
-            status: structuredData.status || 'Needs Improvement'
-        };
-    } catch (error) {
-        console.error('Error in Gemini Service:', error);
-        throw error;
+            if (!result.response.candidates || result.response.candidates.length === 0) {
+                throw new Error("No response generated. It might have been blocked by safety settings.");
+            }
+
+            const responseText = await result.response.text();
+
+            // Split the response to separate the JSON header from the review text
+            const lines = responseText.trim().split('\n');
+            let structuredData = { score: 70, status: 'Needs Improvement' }; // Defaults
+            let cleanReviewText = responseText;
+
+            try {
+                // Check if the first line is valid JSON
+                const firstLine = lines[0].trim();
+                if (firstLine.startsWith('{') && firstLine.endsWith('}')) {
+                    structuredData = JSON.parse(firstLine);
+                    cleanReviewText = lines.slice(1).join('\n').trim();
+                }
+            } catch (e) {
+                console.warn('Failed to parse structured review data, using defaults:', e);
+            }
+
+            return {
+                review: cleanReviewText,
+                score: structuredData.score || 70,
+                status: structuredData.status || 'Needs Improvement'
+            };
+        } catch (error) {
+            // Check for 429 Too Many Requests
+            if (error.status === 429 && i < retries - 1) {
+                console.warn(`[Gemini Service] Rate limit hit. Retrying in ${backoff}ms... (Attempt ${i + 1}/${retries})`);
+                await delay(backoff);
+                backoff *= 2; // Exponential backoff
+                continue;
+            }
+
+            console.error('Error in Gemini Service:', error);
+            throw error;
+        }
     }
 }
 
 module.exports = generateReview;
+

@@ -58,7 +58,9 @@ const Workspace = () => {
 
         } catch (error) {
             console.error('Review failed:', error);
-            setReview('⚠️ Rate Result: Too many requests. You have exceeded your API quota.');
+            const errorMessage = error.response?.data?.error || error.response?.data || error.message || 'An unexpected error occurred.';
+            setReview(`⚠️ **Analysis Error:**\n\n${errorMessage}`);
+            setHealthScore(0);
         } finally {
             setLoading(false);
         }

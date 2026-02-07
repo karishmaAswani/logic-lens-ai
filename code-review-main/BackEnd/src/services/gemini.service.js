@@ -1,6 +1,14 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const crypto = require('crypto');
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+
+if (!process.env.GOOGLE_GEMINI_API_KEY) {
+	console.error("[Gemini Service] GOOGLE_GEMINI_API_KEY is missing from environment variables!");
+} else if (process.env.NODE_ENV !== 'production') {
+	console.log("[Gemini Service] API key present.");
+}
+
 const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
     systemInstruction: `
@@ -71,51 +79,117 @@ const model = genAI.getGenerativeModel({
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
+// Simple in-memory cache with TTL to avoid recomputing identical inputs
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const reviewCache = new Map(); // key: hash, value: { data, expiresAt }
+
+// Track in-flight requests to dedupe concurrent identical requests
+const pendingRequests = new Map(); // key: hash, value: Promise
+
+function hashCodeInput(code) {
+	return crypto.createHash('sha256').update(code || '', 'utf8').digest('hex');
+}
+
 async function generateReview(code, retries = 3, backoff = 2000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const result = await model.generateContent(code);
+	// Cache & dedupe
+	const cacheKey = hashCodeInput(code);
+	const now = Date.now();
 
-            if (!result.response.candidates || result.response.candidates.length === 0) {
-                throw new Error("No response generated. It might have been blocked by safety settings.");
-            }
+	// Serve from cache if fresh
+	const cached = reviewCache.get(cacheKey);
+	if (cached && cached.expiresAt > now) {
+		return cached.data;
+	}
 
-            const responseText = await result.response.text();
+	// Dedupe concurrent calls
+	if (pendingRequests.has(cacheKey)) {
+		return await pendingRequests.get(cacheKey);
+	}
 
-            // Split the response to separate the JSON header from the review text
-            const lines = responseText.trim().split('\n');
-            let structuredData = { score: 70, status: 'Needs Improvement' }; // Defaults
-            let cleanReviewText = responseText;
+	const exec = (async () => {
+		for (let i = 0; i < retries; i++) {
+			try {
+				const result = await model.generateContent(code);
 
-            try {
-                // Check if the first line is valid JSON
-                const firstLine = lines[0].trim();
-                if (firstLine.startsWith('{') && firstLine.endsWith('}')) {
-                    structuredData = JSON.parse(firstLine);
-                    cleanReviewText = lines.slice(1).join('\n').trim();
-                }
-            } catch (e) {
-                console.warn('Failed to parse structured review data, using defaults:', e);
-            }
+				if (!result.response.candidates || result.response.candidates.length === 0) {
+					throw new Error("No response generated. It might have been blocked by safety settings.");
+				}
 
-            return {
-                review: cleanReviewText,
-                score: structuredData.score || 70,
-                status: structuredData.status || 'Needs Improvement'
-            };
-        } catch (error) {
-            // Check for 429 Too Many Requests
-            if (error.status === 429 && i < retries - 1) {
-                console.warn(`[Gemini Service] Rate limit hit. Retrying in ${backoff}ms... (Attempt ${i + 1}/${retries})`);
-                await delay(backoff);
-                backoff *= 2; // Exponential backoff
-                continue;
-            }
+				const responseText = await result.response.text();
 
-            console.error('Error in Gemini Service:', error);
-            throw error;
-        }
-    }
+				// Split the response to separate the JSON header from the review text
+				const lines = responseText.trim().split('\n');
+				let structuredData = { score: 70, status: 'Needs Improvement' }; // Defaults
+				let cleanReviewText = responseText;
+
+				try {
+					// Check if the first line is valid JSON
+					const firstLine = lines[0].trim();
+					if (firstLine.startsWith('{') && firstLine.endsWith('}')) {
+						structuredData = JSON.parse(firstLine);
+						cleanReviewText = lines.slice(1).join('\n').trim();
+					}
+				} catch (e) {
+					console.warn('Failed to parse structured review data, using defaults:', e);
+				}
+
+				const responseData = {
+					review: cleanReviewText,
+					score: structuredData.score || 70,
+					status: structuredData.status || 'Needs Improvement'
+				};
+
+				// Populate cache
+				reviewCache.set(cacheKey, {
+					data: responseData,
+					expiresAt: Date.now() + CACHE_TTL_MS
+				});
+
+				return responseData;
+			} catch (error) {
+				// Normalize quota/rate-limit and network errors
+				const message = (error?.message || '').toLowerCase();
+				if (!error.status) {
+					if (
+						error?.code === 429 ||
+						message.includes('quota') ||
+						message.includes('rate') ||
+						message.includes('429')
+					) {
+						error.status = 429;
+					} else if (
+						error?.code === 'ENOTFOUND' ||
+						error?.code === 'ECONNRESET' ||
+						error?.code === 'ETIMEDOUT' ||
+						message.includes('network')
+					) {
+						error.status = 503;
+						error.message = 'Upstream network error while contacting AI provider. Please try again.';
+					}
+				}
+
+				// Check for 429 Too Many Requests → retry with backoff
+				if (error.status === 429 && i < retries - 1) {
+					console.warn(`[Gemini Service] Rate limit hit. Retrying in ${backoff}ms... (Attempt ${i + 1}/${retries})`);
+					await delay(backoff);
+					backoff *= 2; // Exponential backoff
+					continue;
+				}
+
+				console.error('Error in Gemini Service:', error);
+				throw error;
+			}
+		}
+	})();
+
+	pendingRequests.set(cacheKey, exec);
+
+	try {
+		const result = await exec;
+		return result;
+	} finally {
+		pendingRequests.delete(cacheKey);
+	}
 }
 
 module.exports = generateReview;

@@ -28,7 +28,14 @@ const Workspace = () => {
         localStorage.setItem('reviewHistory', JSON.stringify(history));
     }, [history]);
 
+    const [lastRunAt, setLastRunAt] = useState(0);
+
     const handleReview = async () => {
+        const now = Date.now();
+        if (now - lastRunAt < 2000) {
+            return; // cooldown to prevent rapid re-submissions
+        }
+        setLastRunAt(now);
         setLoading(true);
         setReview('');
         setHealthScore(0);

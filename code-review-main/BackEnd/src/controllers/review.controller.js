@@ -22,6 +22,24 @@ module.exports.reviewCode = async (req, res) => {
         const statusCode = error.status || error.statusCode || 500;
         let errorMessage = "Something went wrong processing the review.";
 
+        // Normalize error message to a readable string (avoid [object Object])
+        const candidates = [
+            error?.message,
+            error?.error,
+            error?.reason,
+            typeof error === 'string' ? error : undefined
+        ];
+        const picked = candidates.find(v => typeof v === 'string' && v.trim().length > 0);
+        if (picked) {
+            errorMessage = picked;
+        } else if (error && typeof error === 'object') {
+            try {
+                errorMessage = JSON.stringify(error);
+            } catch {
+                // keep default
+            }
+        }
+
         if (statusCode === 429) {
             errorMessage = "Too many requests. You have exceeded your API quota. Please try again shortly.";
             res.setHeader('Retry-After', '5');

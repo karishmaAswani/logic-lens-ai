@@ -65,7 +65,12 @@ const Workspace = () => {
 
         } catch (error) {
             console.error('Review failed:', error);
-            const errorMessage = error.response?.data?.error || error.response?.data || error.message || 'An unexpected error occurred.';
+            const raw =
+                error?.response?.data?.error ??
+                error?.response?.data ??
+                error?.message ??
+                'An unexpected error occurred.';
+            const errorMessage = typeof raw === 'string' ? raw : JSON.stringify(raw);
             setReview(`⚠️ **Analysis Error:**\n\n${errorMessage}`);
             setHealthScore(0);
         } finally {

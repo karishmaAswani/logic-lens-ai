@@ -3,8 +3,10 @@ import axios from 'axios';
 // Base URL resolution:
 // 1) Use VITE_API_BASE_URL when provided
 // 2) If running in browser on localhost and not port 3000, assume backend at :3000
-// 3) Otherwise use same-origin
-// 4) Fallback for SSR/build tools: localhost:3000
+// 3) If hosted on Vercel and no env provided, use the deployed backend URL
+// 4) Otherwise use same-origin
+// 5) Fallback for SSR/build tools: localhost:3000
+const PRODUCTION_BACKEND_URL = 'https://logic-lens-ai-server.vercel.app';
 function resolveBaseUrl() {
 	const envUrl = import.meta.env?.VITE_API_BASE_URL;
 	if (envUrl) return envUrl;
@@ -19,6 +21,13 @@ function resolveBaseUrl() {
 		if (isLocal && !origin.endsWith(':3000')) {
 			return 'http://localhost:3000';
 		}
+
+		// If deployed on Vercel and no explicit env, default to known backend URL
+		const isVercel = window.location.hostname.endsWith('.vercel.app');
+		if (isVercel) {
+			return PRODUCTION_BACKEND_URL;
+		}
+
 		return origin;
 	}
 
